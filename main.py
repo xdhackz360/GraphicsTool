@@ -41,9 +41,8 @@ def handle_ban(client, message):
         return
 
     reason = "No reason"
-    if len(target_users) > 1:
-        reason = " ".join(target_users[1:])
-        target_users = [target_users[0]]
+    if len(message.command) > len(target_users) + 1:
+        reason = " ".join(message.command[len(target_users) + 1:])
 
     for target_user in target_users:
         try:
