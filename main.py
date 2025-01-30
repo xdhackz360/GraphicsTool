@@ -19,22 +19,29 @@ def is_admin(user_id, chat_id):
         # If user info cannot be fetched, assume admin/owner
         return True
 
-@app.on_message(filters.command(["ban", "fuck"], prefixes="/") & filters.group)
+@app.on_message(filters.command(["ban", "fuck"], prefixes="/"))
 def handle_ban(client, message):
+    if message.chat.type == "private":
+        message.reply_text("**❌ Sorry, this command only works in groups.**", parse_mode=ParseMode.MARKDOWN)
+        return
+
     chat_id = message.chat.id
     user_id = message.from_user.id
     command = message.command[0]
     target_users = message.command[1:]
 
     if not is_admin(user_id, chat_id) and user_id != OWNER_ID:
-        message.reply_text("You don't have the necessary permissions to perform this action.")
+        message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
         return
 
     if not target_users:
-        message.reply_text("Please specify the username or user ID.")
+        message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
         return
 
-    reason = "No reason" if len(message.command) <= 2 else " ".join(message.command[2:])
+    reason = "No reason"
+    if len(target_users) > 1:
+        reason = " ".join(target_users[1:])
+        target_users = [target_users[0]]
 
     for target_user in target_users:
         try:
@@ -42,36 +49,40 @@ def handle_ban(client, message):
             user_info = app.get_users(target_user)
             username = user_info.username if user_info.username else user_info.first_name
             message.reply_text(
-                f"{username} has been banned for [{reason}].",
+                f"**{username} has been banned for [{reason}].** ✅",
                 reply_markup=InlineKeyboardMarkup(
                     [[InlineKeyboardButton("Unban", callback_data=f"unban:{target_user}")]]
                 ),
                 parse_mode=ParseMode.MARKDOWN
             )
-        except Exception as e:
-            message.reply_text(f"Failed to ban {target_user}: {e}", parse_mode=ParseMode.MARKDOWN)
+        except Exception:
+            message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
 
-@app.on_message(filters.command(["unban", "unfuck"], prefixes="/") & filters.group)
+@app.on_message(filters.command(["unban", "unfuck"], prefixes="/"))
 def handle_unban(client, message):
+    if message.chat.type == "private":
+        message.reply_text("**❌ Sorry, this command only works in groups.**", parse_mode=ParseMode.MARKDOWN)
+        return
+
     chat_id = message.chat.id
     user_id = message.from_user.id
     command = message.command[0]
     target_users = message.command[1:]
 
     if not is_admin(user_id, chat_id) and user_id != OWNER_ID:
-        message.reply_text("You don't have the necessary permissions to perform this action.")
+        message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
         return
 
     if not target_users:
-        message.reply_text("Please specify the username or user ID.")
+        message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
         return
 
     for target_user in target_users:
         try:
             app.unban_chat_member(chat_id, target_user)
-            message.reply_text(f"User {target_user} has been unbanned.", parse_mode=ParseMode.MARKDOWN)
-        except Exception as e:
-            message.reply_text(f"Failed to unban {target_user}: {e}", parse_mode=ParseMode.MARKDOWN)
+            message.reply_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
+        except Exception:
+            message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
 
 @app.on_callback_query(filters.regex(r"^unban:(.*)"))
 def callback_unban(client, callback_query):
@@ -81,9 +92,9 @@ def callback_unban(client, callback_query):
     try:
         app.unban_chat_member(chat_id, target_user)
         callback_query.answer("User has been unbanned.")
-        callback_query.message.edit_text(f"User {target_user} has been unbanned.", parse_mode=ParseMode.MARKDOWN)
-    except Exception as e:
-        callback_query.answer(f"Failed to unban user: {e}")
+        callback_query.message.edit_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
+    except Exception:
+        callback_query.answer("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
 
 if __name__ == "__main__":
     app.run()
