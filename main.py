@@ -19,6 +19,9 @@ def is_admin(user_id, chat_id):
         # If user info cannot be fetched, assume admin/owner
         return True
 
+def handle_error(message):
+    message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
+
 @app.on_message(filters.command(["ban", "fuck"], prefixes="/"))
 def handle_ban(client, message):
     if message.chat.type == "private":
@@ -26,14 +29,13 @@ def handle_ban(client, message):
         return
 
     chat_id = message.chat.id
-    user_id = message.from_user.id
-    command = message.command[0]
-    target_users = message.command[1:]
+    user_id = message.from_user.id if message.from_user else None
 
-    if not is_admin(user_id, chat_id) and user_id != OWNER_ID:
+    if user_id and not is_admin(user_id, chat_id) and user_id != OWNER_ID:
         message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
         return
 
+    target_users = message.command[1:]
     if not target_users:
         message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
         return
@@ -56,7 +58,7 @@ def handle_ban(client, message):
                 parse_mode=ParseMode.MARKDOWN
             )
         except Exception:
-            message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
+            handle_error(message)
 
 @app.on_message(filters.command(["unban", "unfuck"], prefixes="/"))
 def handle_unban(client, message):
@@ -65,14 +67,13 @@ def handle_unban(client, message):
         return
 
     chat_id = message.chat.id
-    user_id = message.from_user.id
-    command = message.command[0]
-    target_users = message.command[1:]
+    user_id = message.from_user.id if message.from_user else None
 
-    if not is_admin(user_id, chat_id) and user_id != OWNER_ID:
+    if user_id and not is_admin(user_id, chat_id) and user_id != OWNER_ID:
         message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
         return
 
+    target_users = message.command[1:]
     if not target_users:
         message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
         return
@@ -82,19 +83,24 @@ def handle_unban(client, message):
             app.unban_chat_member(chat_id, target_user)
             message.reply_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
         except Exception:
-            message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
+            handle_error(message)
 
 @app.on_callback_query(filters.regex(r"^unban:(.*)"))
 def callback_unban(client, callback_query):
     chat_id = callback_query.message.chat.id
+    user_id = callback_query.from_user.id if callback_query.from_user else None
     target_user = callback_query.data.split(":")[1]
+
+    if user_id and not is_admin(user_id, chat_id) and user_id != OWNER_ID:
+        callback_query.answer("**❌ You don't have the necessary permissions to perform this action.**", show_alert=True)
+        return
 
     try:
         app.unban_chat_member(chat_id, target_user)
         callback_query.answer("User has been unbanned.")
         callback_query.message.edit_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
     except Exception:
-        callback_query.answer("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
+        callback_query.answer("**❌ An error occurred while processing the request.**", show_alert=True)
 
 if __name__ == "__main__":
     app.run()
