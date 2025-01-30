@@ -46,7 +46,9 @@ def handle_ban(client, message):
 
     for target_user in target_users:
         try:
-            if not app.get_chat_member(chat_id, client.me.id).can_restrict_members:
+            # Check if the bot has permission to ban members
+            bot_member = app.get_chat_member(chat_id, client.me.id)
+            if not bot_member.can_restrict_members:
                 handle_error(message, "**❌ Sorry Bro I Am Not Admin**")
                 return
 
@@ -102,7 +104,9 @@ def handle_self_kick(client, message):
     user_id = message.from_user.id if message.from_user else None
 
     try:
-        if not app.get_chat_member(chat_id, client.me.id).can_restrict_members:
+        # Check if the bot has permission to kick members
+        bot_member = app.get_chat_member(chat_id, client.me.id)
+        if not bot_member.can_restrict_members:
             handle_error(message, "**❌ Sorry Bro I Am Not Admin**")
             return
 
