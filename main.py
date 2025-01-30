@@ -35,14 +35,14 @@ def handle_ban(client, message):
         message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
         return
 
-    target_users = message.command[1:]
+    target_users = [word for word in message.command[1:] if word.startswith('@')]
+    reason = " ".join([word for word in message.command[1:] if not word.startswith('@')])
+    if not reason:
+        reason = "No reason"
+
     if not target_users:
         message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
         return
-
-    reason = "No reason"
-    if len(message.command) > len(target_users) + 1:
-        reason = " ".join(message.command[len(target_users) + 1:])
 
     for target_user in target_users:
         try:
@@ -72,7 +72,7 @@ def handle_unban(client, message):
         message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
         return
 
-    target_users = message.command[1:]
+    target_users = [word for word in message.command[1:] if word.startswith('@')]
     if not target_users:
         message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
         return
