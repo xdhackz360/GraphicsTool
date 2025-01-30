@@ -19,8 +19,8 @@ def is_admin(user_id, chat_id):
         # If user info cannot be fetched, assume admin/owner
         return True
 
-def handle_error(message):
-    message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
+def handle_error(message, error_text="**❌ An error occurred while processing the request.**"):
+    message.reply_text(error_text, parse_mode=ParseMode.MARKDOWN)
 
 @app.on_message(filters.command(["ban", "fuck"], prefixes="/"))
 def handle_ban(client, message):
@@ -46,6 +46,14 @@ def handle_ban(client, message):
 
     for target_user in target_users:
         try:
+            if not app.get_chat_member(chat_id, client.me.id).can_restrict_members:
+                handle_error(message, "**❌ Sorry Bro I Am Not Admin**")
+                return
+
+            if is_admin(target_user, chat_id):
+                message.reply_text("**Why would I ban an admin? That sounds like a pretty dumb idea❌.**", parse_mode=ParseMode.MARKDOWN)
+                return
+
             app.ban_chat_member(chat_id, target_user)
             user_info = app.get_users(target_user)
             username = user_info.username if user_info.username else user_info.first_name
@@ -83,6 +91,25 @@ def handle_unban(client, message):
             message.reply_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
         except Exception:
             handle_error(message)
+
+@app.on_message(filters.command(["fuckme", "kickme"], prefixes="/"))
+def handle_self_kick(client, message):
+    if message.chat.type == "private":
+        message.reply_text("**❌ Sorry, this command only works in groups.**", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    chat_id = message.chat.id
+    user_id = message.from_user.id if message.from_user else None
+
+    try:
+        if not app.get_chat_member(chat_id, client.me.id).can_restrict_members:
+            handle_error(message, "**❌ Sorry Bro I Am Not Admin**")
+            return
+
+        app.kick_chat_member(chat_id, user_id)
+        message.reply_text("**You have been kicked from the group.** ✅", parse_mode=ParseMode.MARKDOWN)
+    except Exception:
+        handle_error(message)
 
 @app.on_callback_query(filters.regex(r"^unban:(.*)"))
 def callback_unban(client, callback_query):
