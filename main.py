@@ -19,6 +19,17 @@ def fetch_matches():
     data = res.read()
     return json.loads(data.decode("utf-8"))
 
+def fetch_score(match_id):
+    conn = http.client.HTTPSConnection(API_HOST)
+    headers = {
+        'x-rapidapi-key': API_KEY,
+        'x-rapidapi-host': API_HOST
+    }
+    conn.request("GET", f"/mcenter/v1/{match_id}/miniscore", headers=headers)
+    res = conn.getresponse()
+    data = res.read()
+    return json.loads(data.decode("utf-8"))
+
 def format_matches(matches, page=1):
     if not isinstance(matches, dict) or 'typeMatches' not in matches:
         print("Debug: Expected a dictionary with 'typeMatches' but got:", type(matches))
@@ -69,6 +80,25 @@ def format_matches(matches, page=1):
 
     return formatted_matches, reply_markup
 
+def format_score(score_data):
+    if not isinstance(score_data, dict) or 'matchScoreDetails' not in score_data:
+        print("Debug: Expected a dictionary with 'matchScoreDetails' but got:", type(score_data))
+        return "Error: Unable to retrieve score data."
+
+    score_details = score_data['matchScoreDetails']
+    score_text = (
+        f"🏏 {score_details['customStatus']}\n"
+        f"📊 {score_details['state']}\n"
+        f"---------------------------\n"
+    )
+    for innings in score_details['inningsScoreList']:
+        score_text += (
+            f"🆔 Inning {innings['inningsId']} - {innings['batTeamName']}\n"
+            f"Score: {innings['score']}/{innings['wickets']} in {innings['overs']} overs\n"
+            "---------------------------\n"
+        )
+    return score_text
+
 def setup_cric_handler(app):
     @app.on_message(filters.command("matches") & (filters.private | filters.group))
     async def send_matches(client, message):
@@ -79,6 +109,22 @@ def setup_cric_handler(app):
             formatted_message,
             parse_mode=ParseMode.HTML,
             reply_markup=reply_markup,
+            disable_web_page_preview=True
+        )
+
+    @app.on_message(filters.command("score") & (filters.private | filters.group))
+    async def send_score(client, message):
+        if len(message.command) < 2:
+            await message.reply_text("Please provide a match ID. Usage: /score [match id]")
+            return
+
+        match_id = message.command[1]
+        score_data = fetch_score(match_id)
+        formatted_score = format_score(score_data)
+
+        await message.reply_text(
+            formatted_score,
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
 
@@ -94,7 +140,6 @@ def setup_cric_handler(app):
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
-
 # Replace these with your actual API details
 API_ID = "28239710"
 API_HASH = "7fc5b35692454973318b86481ab5eca3"
