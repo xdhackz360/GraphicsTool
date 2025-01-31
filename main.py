@@ -25,7 +25,7 @@ def fetch_score(match_id):
         'x-rapidapi-key': API_KEY,
         'x-rapidapi-host': API_HOST
     }
-    conn.request("GET", f"/mcenter/v1/{match_id}/miniscore", headers=headers)
+    conn.request("GET", f"/matches/v1/{match_id}/score", headers=headers)
     res = conn.getresponse()
     data = res.read()
     return json.loads(data.decode("utf-8"))
@@ -84,17 +84,17 @@ def format_score(score_data):
     # Debug: Print the structure of the score data
     print("Debug: Score data structure:", json.dumps(score_data, indent=2))
 
-    if not isinstance(score_data, dict) or 'miniscore' not in score_data:
-        print("Debug: Expected a dictionary with 'miniscore' but got:", type(score_data))
+    if not isinstance(score_data, dict) or 'matchScoreDetails' not in score_data:
+        print("Debug: Expected a dictionary with 'matchScoreDetails' but got:", type(score_data))
         return "Error: Unable to retrieve score data."
 
-    miniscore = score_data['miniscore']
+    score_details = score_data['matchScoreDetails']
     score_text = (
-        f"🏏 {miniscore.get('customStatus', 'No Status')}\n"
-        f"📊 {miniscore.get('state', 'No State')}\n"
+        f"🏏 {score_details.get('customStatus', 'No Status')}\n"
+        f"📊 {score_details.get('state', 'No State')}\n"
         f"---------------------------\n"
     )
-    for innings in miniscore.get('inningsScoreList', []):
+    for innings in score_details.get('inningsScoreList', []):
         score_text += (
             f"🆔 Inning {innings.get('inningsId', 'Unknown ID')} - {innings.get('batTeamName', 'Unknown Team')}\n"
             f"Score: {innings.get('score', '0')}/{innings.get('wickets', '0')} in {innings.get('overs', '0')} overs\n"
@@ -143,6 +143,7 @@ def setup_cric_handler(app):
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
+
 # Replace these with your actual API details
 API_ID = "28239710"
 API_HASH = "7fc5b35692454973318b86481ab5eca3"
