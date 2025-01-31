@@ -25,7 +25,7 @@ def fetch_score(match_id):
         'x-rapidapi-key': API_KEY,
         'x-rapidapi-host': API_HOST
     }
-    conn.request("GET", f"/mcenter/v1/{match_id}/scorecard", headers=headers)
+    conn.request("GET", f"/mcenter/v1/{match_id}/comm", headers=headers)
     res = conn.getresponse()
     data = res.read()
     return json.loads(data.decode("utf-8"))
@@ -84,20 +84,15 @@ def format_score(score_data):
     # Debug: Print the structure of the score data
     print("Debug: Score data structure:", json.dumps(score_data, indent=2))
 
-    if not isinstance(score_data, dict) or 'scorecard' not in score_data:
-        print("Debug: Expected a dictionary with 'scorecard' but got:", type(score_data))
+    if not isinstance(score_data, dict) or 'commLines' not in score_data:
+        print("Debug: Expected a dictionary with 'commLines' but got:", type(score_data))
         return "Error: Unable to retrieve score data."
 
-    scorecard = score_data['scorecard']
-    score_text = (
-        f"🏏 {scorecard.get('matchStatus', 'No Status')}\n"
-        f"📊 {scorecard.get('status', 'No State')}\n"
-        f"---------------------------\n"
-    )
-    for innings in scorecard.get('innings', []):
+    comm_lines = score_data.get('commLines', [])
+    score_text = ""
+    for line in comm_lines[:5]:  # Limiting to the first 5 commentary lines for brevity
         score_text += (
-            f"🆔 Inning {innings.get('id', 'Unknown ID')} - {innings.get('battingTeam', 'Unknown Team')}\n"
-            f"Score: {innings.get('runs', '0')}/{innings.get('wickets', '0')} in {innings.get('overs', '0')} overs\n"
+            f"{line.get('timestamp', 'Unknown Time')} - {line.get('comm', 'No Commentary')}\n"
             "---------------------------\n"
         )
     return score_text
@@ -143,7 +138,6 @@ def setup_cric_handler(app):
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
-
 # Replace these with your actual API details
 API_ID = "28239710"
 API_HASH = "7fc5b35692454973318b86481ab5eca3"
