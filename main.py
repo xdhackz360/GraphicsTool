@@ -84,15 +84,15 @@ def format_score(score_data):
     # Debug: Print the structure of the score data
     print("Debug: Score data structure:", json.dumps(score_data, indent=2))
 
-    if not isinstance(score_data, dict) or 'commLines' not in score_data:
-        print("Debug: Expected a dictionary with 'commLines' but got:", type(score_data))
+    if not isinstance(score_data, dict) or 'commentaryList' not in score_data:
+        print("Debug: Expected a dictionary with 'commentaryList' but got:", type(score_data))
         return "Error: Unable to retrieve score data."
 
-    comm_lines = score_data.get('commLines', [])
+    commentary_list = score_data.get('commentaryList', [])
     score_text = ""
-    for line in comm_lines[:5]:  # Limiting to the first 5 commentary lines for brevity
+    for line in commentary_list[:5]:  # Limiting to the first 5 commentary lines for brevity
         score_text += (
-            f"{line.get('timestamp', 'Unknown Time')} - {line.get('comm', 'No Commentary')}\n"
+            f"{line.get('timestamp', 'Unknown Time')} - {line.get('commText', 'No Commentary')}\n"
             "---------------------------\n"
         )
     return score_text
@@ -138,6 +138,7 @@ def setup_cric_handler(app):
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
+
 # Replace these with your actual API details
 API_ID = "28239710"
 API_HASH = "7fc5b35692454973318b86481ab5eca3"
