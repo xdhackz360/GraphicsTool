@@ -1,105 +1,115 @@
+import http.client
+import json
 from pyrogram import Client, filters
 from pyrogram.enums import ParseMode
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+API_KEY = "e1a91d4256msh250b999a4c95c5dp14d8d4jsn7168a5c116ff"
+API_HOST = "cricbuzz-cricket.p.rapidapi.com"
+MATCHES_PER_PAGE = 5
+
+def fetch_matches():
+    conn = http.client.HTTPSConnection(API_HOST)
+    headers = {
+        'x-rapidapi-key': API_KEY,
+        'x-rapidapi-host': API_HOST
+    }
+    conn.request("GET", "/matches/v1/recent", headers=headers)
+    res = conn.getresponse()
+    data = res.read()
+    return json.loads(data.decode("utf-8"))
+
+def format_matches(matches, page=1):
+    if not isinstance(matches, dict) or 'typeMatches' not in matches:
+        print("Debug: Expected a dictionary with 'typeMatches' but got:", type(matches))
+        return "Error: Unable to retrieve match data.", None
+
+    formatted_matches = ""
+    start_idx = (page - 1) * MATCHES_PER_PAGE
+    end_idx = start_idx + MATCHES_PER_PAGE
+    match_list = []
+
+    for match_type in matches['typeMatches']:
+        for match in match_type.get('seriesMatches', []):
+            series_ad_wrapper = match.get('seriesAdWrapper', {})
+            series_name = series_ad_wrapper.get('seriesName', 'Unknown Series')
+            for series in series_ad_wrapper.get('matches', []):
+                match_info = series.get('matchInfo', {})
+                match_list.append({
+                    'seriesName': series_name,
+                    'matchDesc': match_info.get('matchDesc', 'Unknown Match'),
+                    'startDate': match_info.get('startDate', 'Unknown Date'),
+                    'status': match_info.get('status', 'Unknown Status'),
+                    'team1': match_info.get('team1', {}).get('teamName', 'Unknown Team 1'),
+                    'team2': match_info.get('team2', {}).get('teamName', 'Unknown Team 2'),
+                    'matchId': match_info.get('matchId', 'Unknown ID')
+                })
+
+    all_matches = match_list[start_idx:end_idx]
+
+    for match in all_matches:
+        formatted_matches += (
+            f"🏆 {match['seriesName']}\n"
+            f"📄 Match Info: {match['matchDesc']}\n"
+            f"📅 Start Date: {match['startDate']} UTC\n"
+            f"⏰ Status: {match['status']}\n"
+            f"👥 Team : {match['team1']} VS {match['team2']}\n"
+            f"🆔 Match ID: {match['matchId']}\n"
+            "━━━━━━━━━━━━━━━━\n"
+        )
+
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton("Previous ⬅️", callback_data=f"matches_page:{page-1}"))
+    if end_idx < len(match_list):
+        buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"matches_page:{page+1}"))
+
+    # Ensure buttons are always in a single list to avoid invalid reply markup
+    reply_markup = InlineKeyboardMarkup([buttons]) if buttons else None
+
+    return formatted_matches, reply_markup
+
+def setup_cric_handler(app):
+    @app.on_message(filters.command("matches") & (filters.private | filters.group))
+    async def send_matches(client, message):
+        matches_data = fetch_matches()
+        formatted_message, reply_markup = format_matches(matches_data)
+
+        await message.reply_text(
+            formatted_message,
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup,
+            disable_web_page_preview=True
+        )
+
+    @app.on_callback_query(filters.regex(r"matches_page:(\d+)"))
+    async def paginate_matches(client, callback_query):
+        page = int(callback_query.data.split(":")[1])
+        matches_data = fetch_matches()
+        formatted_message, reply_markup = format_matches(matches_data, page)
+
+        await callback_query.message.edit_text(
+            formatted_message,
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup,
+            disable_web_page_preview=True
+        )
 
 # Replace these with your actual API details
 API_ID = "28239710"
 API_HASH = "7fc5b35692454973318b86481ab5eca3"
 BOT_TOKEN = "8138984256:AAFEJuQ0hl0HR9H8B4-x4NSBH0YjCWBT084"
 
-app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# Initialize the bot client
+app = Client(
+    "cric_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
 
-OWNER_ID = 7303810912  # Updated owner ID
+# Setup handlers
+setup_cric_handler(app)
 
-def is_admin(user_id, chat_id):
-    try:
-        member = app.get_chat_member(chat_id, user_id)
-        return member.status in ["administrator", "owner"]
-    except:
-        # If user info cannot be fetched, assume admin/owner
-        return True
-
-def handle_error(message):
-    message.reply_text("**❌ An error occurred while processing the request.**", parse_mode=ParseMode.MARKDOWN)
-
-@app.on_message(filters.command(["ban", "fuck"], prefixes="/"))
-def handle_ban(client, message):
-    if message.chat.type == "private":
-        message.reply_text("**❌ Sorry, this command only works in groups.**", parse_mode=ParseMode.MARKDOWN)
-        return
-
-    chat_id = message.chat.id
-    user_id = message.from_user.id if message.from_user else None
-
-    if user_id and not is_admin(user_id, chat_id) and user_id != OWNER_ID:
-        message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
-        return
-
-    target_users = [word for word in message.command[1:] if word.startswith('@')]
-    reason = " ".join([word for word in message.command[1:] if not word.startswith('@')])
-    if not reason:
-        reason = "No reason"
-
-    if not target_users:
-        message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
-        return
-
-    for target_user in target_users:
-        try:
-            app.ban_chat_member(chat_id, target_user)
-            user_info = app.get_users(target_user)
-            username = user_info.username if user_info.username else user_info.first_name
-            message.reply_text(
-                f"**{username} has been banned for [{reason}].** ✅",
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("Unban", callback_data=f"unban:{target_user}")]]
-                ),
-                parse_mode=ParseMode.MARKDOWN
-            )
-        except Exception:
-            handle_error(message)
-
-@app.on_message(filters.command(["unban", "unfuck"], prefixes="/"))
-def handle_unban(client, message):
-    if message.chat.type == "private":
-        message.reply_text("**❌ Sorry, this command only works in groups.**", parse_mode=ParseMode.MARKDOWN)
-        return
-
-    chat_id = message.chat.id
-    user_id = message.from_user.id if message.from_user else None
-
-    if user_id and not is_admin(user_id, chat_id) and user_id != OWNER_ID:
-        message.reply_text("**❌ You don't have the necessary permissions to perform this action.**", parse_mode=ParseMode.MARKDOWN)
-        return
-
-    target_users = [word for word in message.command[1:] if word.startswith('@')]
-    if not target_users:
-        message.reply_text("**❌ Please specify the username or user ID.**", parse_mode=ParseMode.MARKDOWN)
-        return
-
-    for target_user in target_users:
-        try:
-            app.unban_chat_member(chat_id, target_user)
-            message.reply_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
-        except Exception:
-            handle_error(message)
-
-@app.on_callback_query(filters.regex(r"^unban:(.*)"))
-def callback_unban(client, callback_query):
-    chat_id = callback_query.message.chat.id
-    user_id = callback_query.from_user.id if callback_query.from_user else None
-    target_user = callback_query.data.split(":")[1]
-
-    if user_id and not is_admin(user_id, chat_id) and user_id != OWNER_ID:
-        callback_query.answer("**❌ You don't have the necessary permissions to perform this action.**", show_alert=True)
-        return
-
-    try:
-        app.unban_chat_member(chat_id, target_user)
-        callback_query.answer("User has been unbanned.")
-        callback_query.message.edit_text(f"**User {target_user} has been unbanned.** ✅", parse_mode=ParseMode.MARKDOWN)
-    except Exception:
-        callback_query.answer("**❌ An error occurred while processing the request.**", show_alert=True)
-
-if __name__ == "__main__":
-    app.run()
+print("Bot is running...")
+app.run()
