@@ -81,20 +81,23 @@ def format_matches(matches, page=1):
     return formatted_matches, reply_markup
 
 def format_score(score_data):
-    if not isinstance(score_data, dict) or 'matchScoreDetails' not in score_data:
-        print("Debug: Expected a dictionary with 'matchScoreDetails' but got:", type(score_data))
+    # Debug: Print the structure of the score data
+    print("Debug: Score data structure:", json.dumps(score_data, indent=2))
+
+    if not isinstance(score_data, dict) or 'miniscore' not in score_data:
+        print("Debug: Expected a dictionary with 'miniscore' but got:", type(score_data))
         return "Error: Unable to retrieve score data."
 
-    score_details = score_data['matchScoreDetails']
+    miniscore = score_data['miniscore']
     score_text = (
-        f"🏏 {score_details['customStatus']}\n"
-        f"📊 {score_details['state']}\n"
+        f"🏏 {miniscore.get('customStatus', 'No Status')}\n"
+        f"📊 {miniscore.get('state', 'No State')}\n"
         f"---------------------------\n"
     )
-    for innings in score_details['inningsScoreList']:
+    for innings in miniscore.get('inningsScoreList', []):
         score_text += (
-            f"🆔 Inning {innings['inningsId']} - {innings['batTeamName']}\n"
-            f"Score: {innings['score']}/{innings['wickets']} in {innings['overs']} overs\n"
+            f"🆔 Inning {innings.get('inningsId', 'Unknown ID')} - {innings.get('batTeamName', 'Unknown Team')}\n"
+            f"Score: {innings.get('score', '0')}/{innings.get('wickets', '0')} in {innings.get('overs', '0')} overs\n"
             "---------------------------\n"
         )
     return score_text
