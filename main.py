@@ -33,7 +33,7 @@ def fetch_score(match_id):
 def format_matches(matches, page=1):
     if not isinstance(matches, dict) or 'typeMatches' not in matches:
         print("Debug: Expected a dictionary with 'typeMatches' but got:", type(matches))
-        return "Error: Unable to retrieve match data.", None
+        return "**An Error Occurred ❌**", None
 
     formatted_matches = ""
     start_idx = (page - 1) * MATCHES_PER_PAGE
@@ -60,12 +60,12 @@ def format_matches(matches, page=1):
 
     for match in all_matches:
         formatted_matches += (
-            f"🏆 {match['seriesName']}\n"
-            f"📄 Match Info: {match['matchDesc']}\n"
-            f"📅 Start Date: {match['startDate']} UTC\n"
-            f"⏰ Status: {match['status']}\n"
-            f"👥 Team : {match['team1']} VS {match['team2']}\n"
-            f"🆔 Match ID: {match['matchId']}\n"
+            f"🏆 **{match['seriesName']}**\n"
+            f"📄 **Match Info:** {match['matchDesc']}\n"
+            f"📅 **Start Date:** {match['startDate']} UTC\n"
+            f"⏰ **Status:** {match['status']}\n"
+            f"👥 **Team:** {match['team1']} VS {match['team2']}\n"
+            f"🆔 **Match ID:** {match['matchId']}\n"
             "━━━━━━━━━━━━━━━━\n"
         )
 
@@ -86,13 +86,13 @@ def format_score(score_data):
 
     if not isinstance(score_data, dict) or 'commentaryList' not in score_data:
         print("Debug: Expected a dictionary with 'commentaryList' but got:", type(score_data))
-        return "Error: Unable to retrieve score data."
+        return "**An Error Occurred ❌**"
 
     commentary_list = score_data.get('commentaryList', [])
     score_text = ""
     for line in commentary_list[:5]:  # Limiting to the first 5 commentary lines for brevity
         score_text += (
-            f"{line.get('timestamp', 'Unknown Time')} - {line.get('commText', 'No Commentary')}\n"
+            f"**{line.get('timestamp', 'Unknown Time')}** - {line.get('commText', 'No Commentary')}\n"
             "---------------------------\n"
         )
     return score_text
@@ -105,7 +105,7 @@ def setup_cric_handler(app):
 
         await message.reply_text(
             formatted_message,
-            parse_mode=ParseMode.HTML,
+            parse_mode=ParseMode.MARKDOWN,
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
@@ -113,7 +113,7 @@ def setup_cric_handler(app):
     @app.on_message(filters.command("score") & (filters.private | filters.group))
     async def send_score(client, message):
         if len(message.command) < 2:
-            await message.reply_text("Please provide a match ID. Usage: /score [match id]")
+            await message.reply_text("**Please provide a match ID. Usage: /score [match id]**", parse_mode=ParseMode.MARKDOWN)
             return
 
         match_id = message.command[1]
@@ -122,7 +122,7 @@ def setup_cric_handler(app):
 
         await message.reply_text(
             formatted_score,
-            parse_mode=ParseMode.HTML,
+            parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=True
         )
 
@@ -134,10 +134,11 @@ def setup_cric_handler(app):
 
         await callback_query.message.edit_text(
             formatted_message,
-            parse_mode=ParseMode.HTML,
+            parse_mode=ParseMode.MARKDOWN,
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
+
 
 # Replace these with your actual API details
 API_ID = "28239710"
